@@ -13,7 +13,7 @@ jobs:
 
       # Step 2: Run uname -a and redirect output to testmachine/output.txt
       - name: Save uname info to output.txt
-        run: uname -a &gt; testmachine/output.txt
+        run: uname -a > testmachine/output.txt
 
       # Step 3: Verification - Show the contents of the txt file
       - name: Show contents of output.txt
