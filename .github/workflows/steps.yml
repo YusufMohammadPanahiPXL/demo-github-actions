@@ -1,24 +1,19 @@
 name: Steps Examples
-
 on:
   workflow_dispatch:
 
 jobs:
-  steps-example:
-    runs-on: ubuntu-latest
-    steps:
-      # Step 1: Create the directory "testmachine"
+ steps-example:
+  runs-on: ubuntu-latest
+  steps:
       - name: Create directory
         run: mkdir testmachine
 
-      # Step 2: Run uname -a and redirect output to testmachine/output.txt
       - name: Save uname info to output.txt
         run: uname -a -> testmachine/output.txt
 
-      # Step 3: Verification - Show the contents of the txt file
       - name: Show contents of output.txt
         run: cat testmachine/output.txt
 
-      # Step 4: Verification - Show listing and contents of directories
       - name: List directory structure and contents
         run: ls -alhR
