@@ -1,16 +1,17 @@
 name: Steps Examples
+
 on:
   workflow_dispatch:
 
 jobs:
- steps-example:
-  runs-on: ubuntu-latest
-  steps:
+  steps-example:
+    runs-on: ubuntu-latest
+    steps:
       - name: Create directory
         run: mkdir testmachine
 
       - name: Save uname info to output.txt
-        run: uname -a -> testmachine/output.txt
+        run: uname -a > testmachine/output.txt
 
       - name: Show contents of output.txt
         run: cat testmachine/output.txt
