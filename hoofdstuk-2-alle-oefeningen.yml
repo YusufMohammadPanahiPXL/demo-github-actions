@@ -1,0 +1,141 @@
+name: "Hoofdstuk 2 - Alle Oefeningen (Github Actions Introduction)"
+
+# Triggers voor alle oefeningen uit Lab 2:
+# - push naar main (voor quickstart / steps / uses)
+# - workflow_dispatch (manuele run met inputkeuzes voor Oefening 1 & 3)
+# - issues: opened (automatische trigger voor Oefening 2)
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Kies doelomgeving (voor Exercise 3: If statements)'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+  issues:
+    types: [ opened ]
+
+jobs:
+  # =========================================================================
+  # DEEL 1: Quickstart & Steps Example (Lab 2 Pagina 2)
+  # - Directory 'testmachine' aanmaken
+  # - 'uname -a' wegschrijven naar testmachine/output.txt
+  # - Inhoud tonen (cat)
+  # - Directory listing controleren (ls -alhR)
+  # =========================================================================
+  quickstart-and-steps:
+    name: "Lab 2: Steps Example (Directory & uname)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make directory
+        run: mkdir -p testmachine
+
+      - name: Execute uname command
+        run: uname -a > testmachine/output.txt
+
+      - name: Check contents of txt file
+        run: cat testmachine/output.txt
+
+      - name: Check directory output
+        run: ls -alhR
+
+  # =========================================================================
+  # DEEL 2: Marketplace & Uses Example (Lab 2 Pagina 3 & 4)
+  # - Code checkout via actions/checkout@v4
+  # - Python v3.12/v3.13 installeren via actions/setup-python@v5
+  # - Python script aanmaken en uitvoeren
+  # =========================================================================
+  marketplace-and-uses:
+    name: "Lab 2: Marketplace & Python Uses Example"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code with an action
+        uses: actions/checkout@v4
+
+      - name: Use python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run script
+        run: |
+          python -c "
+          import platform, os
+          print('----------- System Info -----------')
+          print(f'System    : {platform.system()} {platform.machine()}')
+          print(f'Release   : {platform.release()}')
+          print(f'Python    : {platform.python_version()}')
+          "
+
+  # =========================================================================
+  # EXTRA OEFENING 1: Directory & File Manipulation (Lab 2 Pagina 4)
+  # - Manueel gestart (of bij push)
+  # - Nieuwe directory maken
+  # - Bestand wegschrijven met korte tekst
+  # - Inhoud van directory tonen in run output
+  # =========================================================================
+  extra-exercise-1-files:
+    name: "Lab 2 Extra 1: Files & Directory Manipulation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create new directory
+        run: mkdir -p mijn_nieuwe_map
+
+      - name: Write text to file
+        run: echo "DevOps Hoofdstuk 2 Oefening 1 geslaagd!" > mijn_nieuwe_map/bericht.txt
+
+      - name: Show directory contents
+        run: |
+          echo "=== Inhoud van directory ==="
+          ls -la mijn_nieuwe_map
+          echo "=== Inhoud van bestand ==="
+          cat mijn_nieuwe_map/bericht.txt
+
+  # =========================================================================
+  # EXTRA OEFENING 2: Issue Trigger (Lab 2 Pagina 4)
+  # - Triggert automatisch bij nieuw issue
+  # - Toont titel en body van het issue in de logs
+  # =========================================================================
+  extra-exercise-2-issue:
+    name: "Lab 2 Extra 2: Issue Trigger Logger"
+    runs-on: ubuntu-latest
+    # Draait alleen als het event daadwerkelijk een issue is
+    if: github.event_name == 'issues'
+    steps:
+      - name: Log issue details
+        run: |
+          echo "Nieuw issue ontvangen!"
+          echo "Titel: ${{ github.event.issue.title }}"
+          echo "Auteur: ${{ github.event.issue.user.login }}"
+          echo "Body: ${{ github.event.issue.body }}"
+
+  # =========================================================================
+  # EXTRA OEFENING 3: Conditional If-Statements (Lab 2 Pagina 4)
+  # - Input parameter 'environment' (development, staging, production)
+  # - Stap alleen bij production: 'Deploying to production!'
+  # - Stap alleen bij development of staging: 'Running in test mode'
+  # - Stap die altijd runt en de gekozen environment toont
+  # =========================================================================
+  extra-exercise-3-conditionals:
+    name: "Lab 2 Extra 3: Conditional If Statements"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production (Alleen bij production)
+        if: github.event.inputs.environment == 'production'
+        run: echo "Deploying to production!"
+
+      - name: Run in test mode (Bij development of staging)
+        if: github.event.inputs.environment == 'development' || github.event.inputs.environment == 'staging'
+        run: echo "Running in test mode"
+
+      - name: Always show selected environment
+        if: always()
+        run: |
+          echo "Gekozen environment: ${{ github.event.inputs.environment || 'standaard push run' }}"
+          echo "Trigger event: ${{ github.event_name }}"

@@ -1,0 +1,115 @@
+# ==============================================================================
+# DEVOPS PXL - HOOFDSTUK 3: COMPLETE CONTINUOUS INTEGRATION & DOCKER SJABLOON
+# Bestand: .github/workflows/h3-ci-docker-template.yml
+# Beschrijving: Dit bestand bevat de volledige CI-pijplijn conform Lab 3:
+#               Checkout, Node setup, dependency installatie, unit testing,
+#               test rapportage, bundling (zip), Docker Buildx, Docker Hub login,
+#               Docker image build & push, en uploaden van test/build artifacts.
+# ==============================================================================
+
+name: H3 - Complete CI & Docker Pipeline Template
+
+# Triggers: Zowel bij elke push naar main, bij pull requests, als manueel startbaar
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Permissies instellen voor het publiceren van testrapporten
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  # ============================================================================
+  # HOOFDJOB: Build, Test, Code Coverage, Zip Artifact & Docker Image Publishing
+  # ============================================================================
+  ci-build-and-package:
+    name: Build, Test & Docker Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      # ------------------------------------------------------------------------
+      # FASE 1: CODE BINNENTREKKEN & RUNTIME INSTALLEREN
+      # ------------------------------------------------------------------------
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # Sneller bouwen door dependencies te cachen
+
+      # ------------------------------------------------------------------------
+      # FASE 2: DEPENDENCIES INSTALLEREN & CODE KWALITEIT
+      # ------------------------------------------------------------------------
+      - name: Install Dependencies
+        run: npm install
+
+      # ------------------------------------------------------------------------
+      # FASE 3: UNIT TESTING & RAPPORTAGE
+      # ------------------------------------------------------------------------
+      - name: Run Unit Tests
+        run: npm test
+
+      - name: Publish Test Report to Summary
+        uses: dorny/test-reporter@v1
+        if: always() # Toon het rapport ook als er testen gefaald zijn
+        with:
+          name: Jest Unit Test Results
+          path: coverage/junit.xml # of coverage/clover.xml afhankelijk van config
+          reporter: jest-junit
+
+      # ------------------------------------------------------------------------
+      # FASE 4: CODE COMPILEREN & BUNDELEN (ZIP ARTIFACT)
+      # ------------------------------------------------------------------------
+      - name: Bundle Code and Dependencies into Zip
+        run: zip -r release.zip . -x "*.git*" ".github/*"
+
+      - name: Archive Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-package
+          path: release.zip
+          retention-days: 7
+
+      # ------------------------------------------------------------------------
+      # FASE 5: DOCKER SETUP, LOGIN & IMAGE GENERATIE
+      # ------------------------------------------------------------------------
+      # Docker Buildx installeren op de runner VM
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Veilig inloggen op Docker Hub met GitHub Secrets (nooit credentials hardcoden!)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Docker image bouwen en pushen naar Docker Hub
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          # Tags: maakt gebruik van je secret username en voorziet 'latest' + Git tag
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/calculator-app:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/calculator-app:${{ github.sha }}
+
+      # ------------------------------------------------------------------------
+      # FASE 6: MAPVERIFICATIE
+      # ------------------------------------------------------------------------
+      - name: Final Filesystem Verification
+        if: always()
+        run: ls -alh

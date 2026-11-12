@@ -1,0 +1,122 @@
+# ==============================================================================
+# DEVOPS PXL - HOOFDSTUK 2: GITHUB ACTIONS BASICS & EXERCISES SJABLOON
+# Bestand: .github/workflows/h2-complete-template.yml
+# Beschrijving: Dit bestand bevat alle concepten uit Lab 2: triggers, inputs,
+#               directory/bestandbewerkingen, conditional checks en marketplace actions.
+# ==============================================================================
+
+name: H2 - GitHub Actions Comprehensive Template
+
+# 1. TRIGGERS (Evenementen die de workflow starten)
+on:
+  # Handmatige trigger via de GitHub interface met input parameters
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Kies de gewenste doelomgeving'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      custom_message:
+        description: 'Een optioneel bericht om weer te geven in de logs'
+        required: false
+        default: 'Template run vanuit H2'
+
+  # Trigger bij een push naar specifieke branches
+  push:
+    branches:
+      - main
+      - develop
+
+  # Trigger bij het aanmaken van een issue
+  issues:
+    types: [opened]
+
+# 2. ENVIRONMENT VARIABELEN OP WORKFLOW-NIVEAU
+env:
+  GLOBAL_APP_NAME: "DevOps-PXL-App"
+  WORKFLOW_VERSION: "2.0.0"
+
+jobs:
+  # ============================================================================
+  # JOB 1: Basis CLI stappen, directory- en bestandsbewerkingen (Steps & Files Lab)
+  # ============================================================================
+  filesystem-and-cli-job:
+    name: Filesystem & CLI Operations
+    runs-on: ubuntu-latest
+
+    steps:
+      # Stap 1: Metadata en context inspecteren via context-variabelen
+      - name: Print Context & Trigger Info
+        run: |
+          echo "Gestart door actor: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Event type: ${{ github.event_name }}"
+          echo "Gekozen omgeving (indien handmatig): ${{ github.event.inputs.environment }}"
+
+      # Stap 2: Directory aanmaken en bestand genereren
+      - name: Create Directory and File
+        run: |
+          mkdir -p testmachine
+          echo "Systeeminformatie:" > testmachine/output.txt
+          uname -a >> testmachine/output.txt
+          echo "Aangemaakt op: $(date)" >> testmachine/output.txt
+
+      # Stap 3: Inhoud van het bestand controleren in de console
+      - name: Check contents of txt file
+        run: |
+          echo "=== Inhoud van output.txt ==="
+          cat testmachine/output.txt
+
+      # Stap 4: Verificatie van directory-structuur (cursus-standaard)
+      - name: Directory Verification (ls -alhR)
+        run: ls -alhR testmachine/
+
+  # ============================================================================
+  # JOB 2: Marketplace Actions & Condities (Conditional & Uses Lab)
+  # ============================================================================
+  marketplace-and-conditions-job:
+    name: Marketplace & Conditionals
+    runs-on: ubuntu-latest
+    # Voer deze job optioneel uit na job 1
+    needs: [filesystem-and-cli-job]
+
+    steps:
+      # Stap 1: Code binnentrekken via officiële GitHub Checkout actie
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      # Stap 2: Python runtime opzetten via Marketplace
+      - name: Setup Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Stap 3: Inline Python script uitvoeren om systeemgegevens te tonen
+      - name: Execute Python Diagnostic Script
+        run: |
+          python3 -c "import platform, sys; print(f'Python runtime: {sys.version}'); print(f'OS platform: {platform.platform()}')"
+
+      # Stap 4: Conditional Step - Alleen uitvoeren als production gekozen is
+      - name: Production Deployment Notice
+        if: ${{ github.event.inputs.environment == 'production' }}
+        run: |
+          echo "=========================================="
+          echo "ALERT: Deploying directly to PRODUCTION!"
+          echo "=========================================="
+
+      # Stap 5: Conditional Step - Uitvoeren bij development of staging
+      - name: Non-Production Test Notice
+        if: ${{ github.event.inputs.environment == 'development' || github.event.inputs.environment == 'staging' }}
+        run: |
+          echo "Running in TEST mode for environment: ${{ github.event.inputs.environment }}"
+
+      # Stap 6: Always Step - Draait altijd ongeacht de uitkomst van eerdere stappen
+      - name: Environment Summary Step
+        if: always()
+        run: |
+          echo "Klaar met uitvoeren van Marketplace & Conditionals sjabloon."
